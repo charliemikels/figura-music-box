@@ -43,7 +43,6 @@ local function get_or_add_and_get_music_box(block)
     ---@class MusicBox
     local new_music_box = {
         id = tostring(block:getPos()),  ---@type MusicBoxID
-        is_open = false,
         pos = block:getPos(),
         is_on_wall = block:getID() == "minecraft:player_wall_head"
     }
@@ -75,7 +74,7 @@ local function music_box_render(_, block, item, entity, context)
 
     local this_box = get_or_add_and_get_music_box(block)
 
-    if this_box.is_open then -- render it as open
+    if open_music_boxes[this_box.id] then -- render it as open
         models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
         models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
     end
@@ -164,7 +163,7 @@ local function listen_for_player_interactions()
             local punched_block_pos = punchedBlock:getPos()
             local punched_music_box = music_boxes[tostring(punched_block_pos)]
             if punched_music_box then
-                if punched_music_box.is_open then
+                if open_music_boxes[punched_music_box.id] then
                     close_box(punched_music_box)
                 else
                     open_box(punched_music_box)
@@ -178,7 +177,7 @@ end
 ---@param music_box MusicBox
 local function remove_music_box(id, music_box)
     print("removeing music box "..id)
-    if music_box.is_open then close_box(music_box) end
+    if open_music_boxes[music_box.id] then close_box(music_box) end
     music_boxes[id] = nil
 end
 
@@ -209,7 +208,7 @@ local function check_next_music_box()
         return
     end
 
-    if current_music_box.is_open and nearest_open_music_box and nearest_open_music_box.id ~= current_music_box_id then
+    if open_music_boxes[current_music_box.id] and nearest_open_music_box and nearest_open_music_box.id ~= current_music_box_id then
         if client_is_closer_to_new_position(current_music_box.pos + block_center_offset, nearest_open_music_box.pos + block_center_offset) then
             nearest_open_music_box = current_music_box
             move_music_source(current_music_box.pos + block_center_offset)
