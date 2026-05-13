@@ -11,6 +11,8 @@ local function get_or_add_and_get_music_box(block)
         return music_boxes[tostring(block:getPos())]
     end
 
+    print("new music box "..tostring(block:getPos()))
+
     ---@class MusicBox
     local new_music_box = {
         is_open = false,
@@ -21,7 +23,6 @@ local function get_or_add_and_get_music_box(block)
     music_boxes[tostring(block:getPos())] = new_music_box
     return new_music_box
 end
-
 
 
 local function reset_music_box_render()
@@ -54,22 +55,92 @@ local function music_box_render(_, block, item, entity, context)
     -- Only placed boxes beyond this point
 end
 
-local function listen_for_player_interactions()
-    -- checks all players. If they are targeting the head, change head state.
+local block_center_offset = vectors.vec3(0.5, 0.5, 0.5)
 
+---@param music_box MusicBox
+local function open_box(music_box)
+    music_box.is_open = true
+
+    sounds["block.lever.click"]
+        :setPos(music_box.pos + block_center_offset)
+        :setSubtitle("Music box opens")
+        :setPitch(0.6)
+        :play()
+
+
+    -- TODO: if there is no active player, start it at this position
+    -- TODO: See if this box is closer and move the SongPlayer here if it's already started.
+    -- TODO: update sound player to be positioned at the next nearest box.
 end
 
 ---@param music_box MusicBox
 local function close_box(music_box)
     music_box.is_open = false
+
+    sounds["block.lever.click"]
+        :setPos(music_box.pos + block_center_offset)
+        :setSubtitle("Music box closes")
+        :setPitch(0.5)
+        :play()
+
+
     -- TODO: if there are no open boxes, then stop the song player.
     -- TODO: update sound player to be positioned at the next nearest box.
+end
+
+local block_reach = 8
+local function listen_for_player_interactions()
+
+    -- checks all players. If they are targeting the a music box, change that box's state.
+
+    for _, test_player in pairs(world.getPlayers()) do
+        if (test_player:getSwingTime() == 1) then -- this player punched this tick
+            print("SWING")
+            local punchedBlock, _, _ = test_player:getTargetedBlock(true, block_reach)
+            local punched_block_pos = punchedBlock:getPos()
+            local punched_music_box = music_boxes[tostring(punched_block_pos)]
+            if punched_music_box then
+                if punched_music_box.is_open then
+                    close_box(punched_music_box)
+                else
+                    open_box(punched_music_box)
+                end
+            end
+
+        --     if not pos_is_known_radio(punched_block_pos)
+        --         and pos_is_a_radio(punched_block_pos)
+        --         and radio_is_in_range(punched_block_pos)
+        --         and not test_player:isCrouching()
+        --     then
+        --         -- new radio, and it's in range!
+        --         add_radio(punched_block_pos)
+        --         sounds["block.lever.click"]
+        --             :setPos(punched_block_pos + radio_sound_pos_offset)
+        --             :setSubtitle("Radio turns on")
+        --             :setPitch(0.6)
+        --             :play()
+        --     end
+
+        --     if pos_is_known_radio(punched_block_pos) then
+        --         if test_player:isCrouching() then
+        --             unknow_radio(punched_block_pos)
+        --             sounds["block.lever.click"]
+        --                 :setPos(punched_block_pos + radio_sound_pos_offset)
+        --                 :setSubtitle("Radio turns off")
+        --                 :setPitch(0.5)
+        --                 :play()
+        --         else
+        --             radio_react_to_punch(punched_block_pos)
+        --         end
+        --     end
+        end
+    end
 end
 
 ---@param id MusicBoxID
 ---@param music_box MusicBox
 local function remove_music_box(id, music_box)
-    print("removeing radio", id)
+    print("removeing music box "..id)
     if music_box.is_open then close_box(music_box) end
     music_boxes[id] = nil
 end
@@ -111,6 +182,7 @@ local function fake_init()
 
     events.SKULL_RENDER:register(music_box_render)
     events.WORLD_TICK:register(check_next_music_box)
+    events.WORLD_TICK:register(listen_for_player_interactions)
     --events.WORLD_TICK:register(listen_for_player_interactions)
 end
 events.SKULL_RENDER:register(fake_init)
