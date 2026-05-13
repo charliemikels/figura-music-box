@@ -97,7 +97,6 @@ end
 
 ---@param music_box MusicBox
 local function open_box(music_box)
-    music_box.is_open = true
     open_music_boxes[music_box.id] = music_box
     if (not nearest_open_music_box)
         or client_is_closer_to_new_position(music_box.pos + block_center_offset, nearest_open_music_box.pos + block_center_offset)
@@ -125,7 +124,6 @@ end
 
 ---@param music_box MusicBox
 local function close_box(music_box)
-    music_box.is_open = false
     open_music_boxes[music_box.id] = nil
     if not next(open_music_boxes) then -- there are no open music boxes
         nearest_open_music_box = nil
