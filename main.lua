@@ -230,9 +230,14 @@ local upgrade_request_text = upgrade_request_billboard:newText("text")
     :setOpacity(0.7)
     :shadow(true)
 
+
+
+
+
+
 ---@type Event.SkullRender.func
 local function fake_init()
-    if avatar:getPermissionLevel() ~= "MAX" then return end
+    if avatar:getPermissionLevel() ~= "MAX" then return end -- Delay/Loop init function until we're at max perms.
 
     events.SKULL_RENDER:remove(fake_init)   -- make sure we don't double init
 
@@ -241,14 +246,15 @@ local function fake_init()
     upgrade_request_text:remove()
 
     print("--<< box reloaded | " .. world.getTime() .. " >>--")
-    animations.MusicBox["animation.model.Playing"]:play()
-    models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
-    models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
+
+    -- models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
+    -- models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
 
     events.SKULL_RENDER:register(music_box_render)
     events.WORLD_TICK:register(check_next_music_box)
     events.WORLD_TICK:register(listen_for_player_interactions)
 
+    animations.MusicBox["animation.model.Playing"]:pause()  -- The animation is what actualy opens the lid. Setting it to pause holds the first frame.
 
     -- Set up music player stuff
 
@@ -285,6 +291,9 @@ local function fake_init()
                 move_music_source(nearest_open_music_box.pos + block_center_offset)
                 song_controller.play()
             end
+
+            animations.MusicBox["animation.model.Playing"]:stop()   -- calling stop helps un-stick :pause()
+            animations.MusicBox["animation.model.Playing"]:play()
 
             printTable(song_controller)
         end)
