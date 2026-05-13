@@ -171,9 +171,28 @@ local function check_next_music_box()
 end
 
 
+local upgrade_request_root = models:newPart("Please Upgrade perms to Max", "SKULL")
+    :setPos(0,13,0)
+local upgrade_request_billboard = upgrade_request_root:newPart("camera", "Camera")
+local upgrade_request_text = upgrade_request_billboard:newText("text")
+    :setText(
+        "Please set ".. avatar:getEntityName() .."\nto MAX permissions."
+        .."\nYou may need to click\n`show disconected avatars`."
+    )
+    :alignment("CENTER")
+    :scale(0.15)
+    :setOpacity(0.7)
+    :shadow(true)
+
 ---@type Event.SkullRender.func
 local function fake_init()
+    if avatar:getPermissionLevel() ~= "MAX" then return end
+
     events.SKULL_RENDER:remove(fake_init)
+
+    upgrade_request_root:remove()
+    upgrade_request_billboard:remove()
+    upgrade_request_text:remove()
 
     print("--<< box reloaded | " .. world.getTime() .. " >>--")
     animations.MusicBox["animation.model.Playing"]:play()
