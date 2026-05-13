@@ -83,7 +83,7 @@ local function remove_missing_music_boxes()
 end
 
 events.ENTITY_INIT:register(function()
-    print("--<< box reloaded | " .. world:getTime() .. " >>--")
+    print("--<< box reloaded | " .. world.getTime() .. " >>--")
     animations.MusicBox["animation.model.Playing"]:play()
     models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
     models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
