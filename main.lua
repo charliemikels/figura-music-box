@@ -1,66 +1,53 @@
+
+---@alias MusicBoxID string -- Essentialy tostring(block_state:getPos())
+
+---@type table<MusicBoxID, MusicBox>
 local music_boxes = {}
-local music_box_skull_owner_id = { 1691807430, 517033792, -1227640045, 902324743 }
--- ^^ Tanner_Limes uuid
 
-local function get_music_box(blockState)
-    if type(blockState) == "string" then
-        error("Todo: get_music_box needs to take pos as a string")
-    elseif type(blockState) == "Vector" then -- can accept vector
-        blockState = world.getBlockState(blockState)
+---@param block BlockState
+---@return MusicBox
+local function get_or_add_and_get_music_box(block)
+    if music_boxes[tostring(block:getPos())] then
+        return music_boxes[tostring(block:getPos())]
     end
 
-    -- find block in list of music_boxes
-    if type(blockState) ~= "BlockState" then
-        return nil
-    elseif music_boxes[tostring(blockState:getPos())] ~= nil then
-        return music_boxes[tostring(blockState:getPos())]
+    ---@class MusicBox
+    local new_music_box = {
+        is_open = false,
+        pos = block:getPos(),
+        is_on_wall = block:getID() == "minecraft:player_wall_head"
+    }
 
-        -- looks like we don't have this block recorded. See if this block is a
-        -- music box, and if it is, record it.
-    elseif (blockState:getID() == "minecraft:player_wall_head"
-            or blockState:getID() == "minecraft:player_head"
-        )
-        and blockState:getEntityData() ~= nil
-        and blockState:getEntityData()["SkullOwner"] ~= nil
-        and table.concat(blockState:getEntityData()["SkullOwner"]["Id"])
-        == table.concat(music_box_skull_owner_id)
-    then
-        music_boxes[tostring(blockState:getPos())] = {
-            is_open = true,
-            pos = blockState:getPos(),
-            is_on_wall = blockState:getID() == "minecraft:player_wall_head"
-        }
-        print("here")
-        return music_boxes[tostring(blockState:getPos())]
-    end
-
-    return nil
+    music_boxes[tostring(block:getPos())] = new_music_box
+    return new_music_box
 end
 
-local function music_box_render(delta, blockState)
-    -- Non placed boxes (ie, in an inventory or on a head), should be
-    -- rendered as closed
-    if not blockState then
-        models.MusicBox.SKULL.MusicBox.Playing:setVisible(false)
-        models.MusicBox.SKULL.MusicBox.Closed:setVisible(true)
+
+
+local function reset_music_box_render()
+    models.MusicBox.SKULL.MusicBox.Playing:setVisible(false)
+    models.MusicBox.SKULL.MusicBox.Closed:setVisible(true)
+    models.MusicBox.SKULL.MusicBox:setPos(0, 0, 0)
+end
+
+---@type Event.SkullRender.func
+local function music_box_render(_, block, item, entity, context)
+    reset_music_box_render()
+
+    if not block then -- This render call is not for a block.
         models.MusicBox.SKULL.MusicBox:setPos(0, 1, 0)
         return
     end
 
-    -- check if box is in table
+    local this_box = get_or_add_and_get_music_box(block)
 
-    local this_box = get_music_box(blockState)
-    if not this_box then
-        clean_music_box_table()
+    if this_box.is_open then -- render it as open
+        models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
+        models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
     end
-    --printTable(this_box)
 
-    models.MusicBox.SKULL.MusicBox.Playing:setVisible(this_box.is_open)
-    models.MusicBox.SKULL.MusicBox.Closed:setVisible(not this_box.is_open)
-    if this_box.is_on_wall then
+    if this_box.is_on_wall then -- nudge forward to avoid wall.
         models.MusicBox.SKULL.MusicBox:setPos(0, 0, -2.5)
-    else
-        models.MusicBox.SKULL.MusicBox:setPos(0, 0, 0)
     end
 
 
@@ -69,25 +56,61 @@ end
 
 local function listen_for_player_interactions()
     -- checks all players. If they are targeting the head, change head state.
+
 end
 
-local function remove_missing_music_boxes()
-    -- scans known music boxes, and checks if they're
-    for i, v in pairs(music_boxes) do
-        if world.getBlockState(v.pos).id ~= "minecraft:player_head"
-            and world.getBlockState(v.pos).id ~= "minecraft:player_wall_head"
-        then
-            music_boxes[i] = nil
-        end
+---@param music_box MusicBox
+local function close_box(music_box)
+    music_box.is_open = false
+    -- TODO: if there are no open boxes, then stop the song player.
+    -- TODO: update sound player to be positioned at the next nearest box.
+end
+
+---@param id MusicBoxID
+---@param music_box MusicBox
+local function remove_music_box(id, music_box)
+    print("removeing radio", id)
+    if music_box.is_open then close_box(music_box) end
+    music_boxes[id] = nil
+end
+
+local last_checked_id = nil
+local function check_next_music_box()
+    local current_key, music_box = next(music_boxes, last_checked_id)
+    last_checked_id = current_key
+    if not current_key then -- Either there are no boxes, or we've hit the end of the list. Loop back to the top.
+        return
     end
+
+
+    local test_block_state = world.getBlockState(music_box.pos)
+    if not test_block_state then -- for whatever reason, this position is invalid
+        remove_music_box(current_key, music_box)
+        return
+    end
+
+    if      test_block_state.id ~= "minecraft:player_head"
+        and test_block_state.id ~= "minecraft:player_wall_head"
+    then -- there's a block here, but it is not a player head.
+        remove_music_box(current_key, music_box)
+        return
+    end
+
+    -- TODO: test distance. If too far, remove the box.
 end
 
-events.ENTITY_INIT:register(function()
+
+---@type Event.SkullRender.func
+local function fake_init()
+    events.SKULL_RENDER:remove(fake_init)
+
     print("--<< box reloaded | " .. world.getTime() .. " >>--")
     animations.MusicBox["animation.model.Playing"]:play()
     models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
     models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
 
     events.SKULL_RENDER:register(music_box_render)
+    events.WORLD_TICK:register(check_next_music_box)
     --events.WORLD_TICK:register(listen_for_player_interactions)
-end)
+end
+events.SKULL_RENDER:register(fake_init)
