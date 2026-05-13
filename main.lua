@@ -4,6 +4,23 @@
 ---@type table<MusicBoxID, MusicBox>
 local music_boxes = {}
 
+
+local block_center_offset = vectors.vec3(0.5, 0.5, 0.5)
+
+local auto_close_distance = 32
+
+---@param test_pos Vector3
+---@param distance number
+---@return boolean
+local function client_is_near_pos(test_pos, distance)
+    local squared_distance = distance * distance
+    local squared_distance_to_test_pos = (test_pos - client:getCameraPos()):lengthSquared()
+    if squared_distance_to_test_pos < squared_distance then
+        return true
+    end
+    return false
+end
+
 ---@param block BlockState
 ---@return MusicBox
 local function get_or_add_and_get_music_box(block)
@@ -40,6 +57,11 @@ local function music_box_render(_, block, item, entity, context)
         return
     end
 
+    if not client_is_near_pos((block:getPos() + block_center_offset), auto_close_distance) then
+        -- print("too far from "..tostring(block:getPos()))
+        return
+    end
+
     local this_box = get_or_add_and_get_music_box(block)
 
     if this_box.is_open then -- render it as open
@@ -55,7 +77,6 @@ local function music_box_render(_, block, item, entity, context)
     -- Only placed boxes beyond this point
 end
 
-local block_center_offset = vectors.vec3(0.5, 0.5, 0.5)
 
 ---@param music_box MusicBox
 local function open_box(music_box)
@@ -140,7 +161,10 @@ local function check_next_music_box()
         return
     end
 
-    -- TODO: test distance. If too far, remove the box.
+    if not client_is_near_pos((music_box.pos + block_center_offset), auto_close_distance) then
+        remove_music_box(current_key, music_box)
+        return
+    end
 end
 
 
