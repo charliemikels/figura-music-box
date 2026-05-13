@@ -106,33 +106,6 @@ local function listen_for_player_interactions()
                     open_box(punched_music_box)
                 end
             end
-
-        --     if not pos_is_known_radio(punched_block_pos)
-        --         and pos_is_a_radio(punched_block_pos)
-        --         and radio_is_in_range(punched_block_pos)
-        --         and not test_player:isCrouching()
-        --     then
-        --         -- new radio, and it's in range!
-        --         add_radio(punched_block_pos)
-        --         sounds["block.lever.click"]
-        --             :setPos(punched_block_pos + radio_sound_pos_offset)
-        --             :setSubtitle("Radio turns on")
-        --             :setPitch(0.6)
-        --             :play()
-        --     end
-
-        --     if pos_is_known_radio(punched_block_pos) then
-        --         if test_player:isCrouching() then
-        --             unknow_radio(punched_block_pos)
-        --             sounds["block.lever.click"]
-        --                 :setPos(punched_block_pos + radio_sound_pos_offset)
-        --                 :setSubtitle("Radio turns off")
-        --                 :setPitch(0.5)
-        --                 :play()
-        --         else
-        --             radio_react_to_punch(punched_block_pos)
-        --         end
-        --     end
         end
     end
 end
