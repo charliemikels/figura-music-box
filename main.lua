@@ -211,6 +211,7 @@ local function check_next_music_box()
 
     if current_music_box.is_open and nearest_open_music_box and nearest_open_music_box.id ~= current_music_box_id then
         if client_is_closer_to_new_position(current_music_box.pos + block_center_offset, nearest_open_music_box.pos + block_center_offset) then
+            nearest_open_music_box = current_music_box
             move_music_source(current_music_box.pos + block_center_offset)
         end
     end
@@ -247,14 +248,14 @@ local function fake_init()
 
     print("--<< box reloaded | " .. world.getTime() .. " >>--")
 
-    -- models.MusicBox.SKULL.MusicBox.Closed:setVisible(false)
-    -- models.MusicBox.SKULL.MusicBox.Playing:setVisible(true)
 
     events.SKULL_RENDER:register(music_box_render)
     events.WORLD_TICK:register(check_next_music_box)
     events.WORLD_TICK:register(listen_for_player_interactions)
 
     animations.MusicBox["animation.model.Playing"]:pause()  -- The animation is what actualy opens the lid. Setting it to pause holds the first frame.
+
+
 
     -- Set up music player stuff
 
@@ -265,13 +266,14 @@ local function fake_init()
         print("Failed to get the song from the music player library")
     else
         local data_processor = song_holder:start_or_get_data_processor()
+
         data_processor:register_callback(function (finished_future)
             if finished_future:has_error() then
                 print("failed to process song")
                 return
             end
 
-            song_config = song_holder.included_config
+            song_config = song_holder.included_config or {}
 
             song_config.source_entity = nil
 
