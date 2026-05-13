@@ -1,24 +1,34 @@
 
 ---@alias MusicBoxID string -- Essentialy tostring(block_state:getPos())
 
----@type table<MusicBoxID, MusicBox>
-local music_boxes = {}
+local music_boxes = {}              ---@type table<MusicBoxID, MusicBox>
+local open_music_boxes = {}         ---@type table<MusicBoxID, MusicBox>
+local nearest_open_music_box = nil  ---@type MusicBox?
 
 
 local block_center_offset = vectors.vec3(0.5, 0.5, 0.5)
 
 local auto_close_distance = 32
 
+---@param position Vector3
+---@return number
+local function get_squared_distance_from_client_to_position(position)
+    return (position - client:getCameraPos()):lengthSquared()
+end
+
 ---@param test_pos Vector3
 ---@param distance number
 ---@return boolean
 local function client_is_near_pos(test_pos, distance)
-    local squared_distance = distance * distance
-    local squared_distance_to_test_pos = (test_pos - client:getCameraPos()):lengthSquared()
-    if squared_distance_to_test_pos < squared_distance then
-        return true
-    end
-    return false
+    local squared_distance = distance*distance
+    return get_squared_distance_from_client_to_position(test_pos) < squared_distance
+end
+
+---@param new_position Vector3
+---@param old_position Vector3
+---@return boolean
+local function client_is_closer_to_new_position(new_position, old_position)
+    return get_squared_distance_from_client_to_position(new_position) < get_squared_distance_from_client_to_position(old_position)
 end
 
 ---@param block BlockState
@@ -32,6 +42,7 @@ local function get_or_add_and_get_music_box(block)
 
     ---@class MusicBox
     local new_music_box = {
+        id = tostring(block:getPos()),  ---@type MusicBoxID
         is_open = false,
         pos = block:getPos(),
         is_on_wall = block:getID() == "minecraft:player_wall_head"
@@ -72,15 +83,34 @@ local function music_box_render(_, block, item, entity, context)
     if this_box.is_on_wall then -- nudge forward to avoid wall.
         models.MusicBox.SKULL.MusicBox:setPos(0, 0, -2.5)
     end
+end
 
 
-    -- Only placed boxes beyond this point
+local song_controller    ---@type SongPlayerController?
+local song_config        ---@type SongPlayerConfig?
+local song_loop_function ---@type fun(stop_reason:SongPlayerStopReason)?
+
+local function move_music_source(new_pos)
+    if song_config then song_config.source_pos = new_pos end
+    if song_controller then song_controller.set_new_config(song_config) end
 end
 
 
 ---@param music_box MusicBox
 local function open_box(music_box)
     music_box.is_open = true
+    open_music_boxes[music_box.id] = music_box
+    if (not nearest_open_music_box)
+        or client_is_closer_to_new_position(music_box.pos + block_center_offset, nearest_open_music_box.pos + block_center_offset)
+    then
+        nearest_open_music_box = music_box
+        move_music_source(music_box.pos + block_center_offset)
+    end
+
+    if song_controller and not song_controller.is_playing() then
+        song_controller.play()
+        song_controller.register_stop_callback(song_loop_function)
+    end
 
     sounds["block.lever.click"]
         :setPos(music_box.pos + block_center_offset)
@@ -97,6 +127,20 @@ end
 ---@param music_box MusicBox
 local function close_box(music_box)
     music_box.is_open = false
+    open_music_boxes[music_box.id] = nil
+    if not next(open_music_boxes) then -- there are no open music boxes
+        nearest_open_music_box = nil
+        if song_controller then
+            song_controller.remove_stop_callback(song_loop_function)
+            song_controller.stop()
+        end
+    elseif music_box.id == nearest_open_music_box.id then
+        local closest_box = nil
+        local closest_box_distance = math.huge
+        for _, compare_box in pairs(open_music_boxes) do
+
+        end
+    end
 
     sounds["block.lever.click"]
         :setPos(music_box.pos + block_center_offset)
@@ -105,7 +149,6 @@ local function close_box(music_box)
         :play()
 
 
-    -- TODO: if there are no open boxes, then stop the song player.
     -- TODO: update sound player to be positioned at the next nearest box.
 end
 
@@ -139,31 +182,37 @@ local function remove_music_box(id, music_box)
     music_boxes[id] = nil
 end
 
+
 local last_checked_id = nil
 local function check_next_music_box()
-    local current_key, music_box = next(music_boxes, last_checked_id)
-    last_checked_id = current_key
-    if not current_key then -- Either there are no boxes, or we've hit the end of the list. Loop back to the top.
+    local current_music_box_id, current_music_box = next(music_boxes, last_checked_id)
+    last_checked_id = current_music_box_id
+    if not current_music_box_id then -- Either there are no boxes, or we've hit the end of the list. Loop back to the top.
         return
     end
 
-
-    local test_block_state = world.getBlockState(music_box.pos)
+    local test_block_state = world.getBlockState(current_music_box.pos)
     if not test_block_state then -- for whatever reason, this position is invalid
-        remove_music_box(current_key, music_box)
+        remove_music_box(current_music_box_id, current_music_box)
         return
     end
 
     if      test_block_state.id ~= "minecraft:player_head"
         and test_block_state.id ~= "minecraft:player_wall_head"
     then -- there's a block here, but it is not a player head.
-        remove_music_box(current_key, music_box)
+        remove_music_box(current_music_box_id, current_music_box)
         return
     end
 
-    if not client_is_near_pos((music_box.pos + block_center_offset), auto_close_distance) then
-        remove_music_box(current_key, music_box)
+    if not client_is_near_pos((current_music_box.pos + block_center_offset), auto_close_distance) then
+        remove_music_box(current_music_box_id, current_music_box)
         return
+    end
+
+    if current_music_box.is_open and nearest_open_music_box and nearest_open_music_box.id ~= current_music_box_id then
+        if client_is_closer_to_new_position(current_music_box.pos + block_center_offset, nearest_open_music_box.pos + block_center_offset) then
+            move_music_source(current_music_box.pos + block_center_offset)
+        end
     end
 end
 
@@ -185,7 +234,7 @@ local upgrade_request_text = upgrade_request_billboard:newText("text")
 local function fake_init()
     if avatar:getPermissionLevel() ~= "MAX" then return end
 
-    events.SKULL_RENDER:remove(fake_init)
+    events.SKULL_RENDER:remove(fake_init)   -- make sure we don't double init
 
     upgrade_request_root:remove()
     upgrade_request_billboard:remove()
@@ -199,6 +248,47 @@ local function fake_init()
     events.SKULL_RENDER:register(music_box_render)
     events.WORLD_TICK:register(check_next_music_box)
     events.WORLD_TICK:register(listen_for_player_interactions)
-    --events.WORLD_TICK:register(listen_for_player_interactions)
+
+
+    -- Set up music player stuff
+
+    local library = require("music_player.libraries"):build_library()
+    library:add_local_songs()
+    local song_holder = library:get_song_by_id("music_player.local_songs.starbound-atlas")
+    if not song_holder then
+        print("Failed to get the song from the music player library")
+    else
+        local data_processor = song_holder:start_or_get_data_processor()
+        data_processor:register_callback(function (finished_future)
+            if finished_future:has_error() then
+                print("failed to process song")
+                return
+            end
+
+            song_config = song_holder.included_config
+
+            song_config.source_entity = nil -- on the off chance that this was set by the song
+
+            song_config.primary_update_event_key  = "SKULL_RENDER"
+            song_config.fallback_update_event_key = "WORLD_RENDER"  -- Good thing we are already insisting upon max perms
+
+            local song_player_api = require("music_player.song_player")
+            song_controller = song_player_api.new_player(song_holder.processed_song, song_config)
+
+            song_loop_function = function(_)
+                -- just immediatly call the play function when the song ends.
+                -- We'll need to unregister this function to actualy stop the song.
+                song_controller.play()
+            end
+
+            if nearest_open_music_box then
+                move_music_source(nearest_open_music_box.pos + block_center_offset)
+                song_controller.play()
+            end
+
+            printTable(song_controller)
+        end)
+    end
+
 end
 events.SKULL_RENDER:register(fake_init)
