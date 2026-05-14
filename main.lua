@@ -281,14 +281,14 @@ local function fake_init()
             song_config.primary_update_event_key  = "SKULL_RENDER"
             song_config.fallback_update_event_key = "WORLD_RENDER"  -- Good thing we are already requireing max perms
 
-            -- if not song_config.instrument_selections then song_config.instrument_selections = {} end
-            -- for track_index, track in ipairs(song_holder.processed_song.tracks) do
-            --     if track.instrument_type_id == 0 then
-            --         song_config.instrument_selections[track_index] = {
-            --             name = "MC/Bell"
-            --         }
-            --     end
-            -- end
+            if not song_config.instrument_selections then song_config.instrument_selections = {} end
+            for track_index, track in ipairs(song_holder.processed_song.tracks) do
+                if track.instrument_type_id == 0 then
+                    song_config.instrument_selections[track_index] = {
+                        name = "Music Box"
+                    }
+                end
+            end
 
             local song_player_api = require("music_player.song_player")
             song_controller = song_player_api.new_player(song_holder.processed_song, song_config)
