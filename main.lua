@@ -115,11 +115,6 @@ local function open_box(music_box)
         :setSubtitle("Music box opens")
         :setPitch(0.6)
         :play()
-
-
-    -- TODO: if there is no active player, start it at this position
-    -- TODO: See if this box is closer and move the SongPlayer here if it's already started.
-    -- TODO: update sound player to be positioned at the next nearest box.
 end
 
 ---@param music_box MusicBox
@@ -142,9 +137,6 @@ local function close_box(music_box)
         :setSubtitle("Music box closes")
         :setPitch(0.5)
         :play()
-
-
-    -- TODO: update sound player to be positioned at the next nearest box.
 end
 
 local block_reach = 8
