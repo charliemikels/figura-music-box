@@ -239,8 +239,18 @@ end
 ---@return boolean
 local function client_is_looking_at_song_player(song_player)
     if host:isHost() then return true end   -- means that, for the host, the display is visible at all times (within the distance range), but no funky behaviors in 3rd person or paperdolls.
+    if song_player.source_entity and client:getViewer() then
+        local viewer_targeted_entity = client:getViewer():getTargetedEntity()
+        if viewer_targeted_entity then
+            return viewer_targeted_entity:getUUID() == song_player.source_entity:getUUID()
+        end
+    end
     local source_pos_in_screen_space = vectors.worldToScreenSpace(song_player.source_pos)
-    if source_pos_in_screen_space.z > 1 and source_pos_in_screen_space.xy:length() < 0.2 then return true end
+    if      source_pos_in_screen_space.z > 1                -- pos is not behind screen
+        and source_pos_in_screen_space.xy:length() < 0.2    -- pos is near center of screen
+    then
+        return true
+    end
     return false
 end
 
@@ -272,24 +282,25 @@ local function update_info_display_text(song_player)
     song_player.info_display_text_task:setText(info_text)
 end
 
-local instrument_applyer_loop_is_running = false
+local configed_instruments_to_apply = {} ---@type table<SongPlayer, {track_config:SongPlayerTrackConfig, new_selection:InstrumentSelection}[]>
 
-local configed_instruments_to_apply = {} ---@type {song_player: SongPlayer, track_config:SongPlayerTrackConfig, new_selection:InstrumentSelection}[]
-
-local function configured_instrument_applyer_loop()
-    if #configed_instruments_to_apply < 1 then
-        instrument_applyer_loop_is_running = false
-        events.TICK:remove(configured_instrument_applyer_loop)
-        return
+--- Use with the `apply_config_update_loop_for_this_player` functions inside `eventualy_apply_configed_instrument`.
+---@return boolean? is_done
+local function apply_config_instrument_update_loop(song_player)
+    if #configed_instruments_to_apply[song_player] <= 0 then
+        configed_instruments_to_apply[song_player] = nil
+        return true
+        -- song_player.controller.remove_update_callback(apply_config_update_loop_for_this_player)
     end
 
-    local to_apply_this_time = table.remove(configed_instruments_to_apply)
+    local list_of_instruments_we_need_to_apply = configed_instruments_to_apply[song_player]
+    local to_apply_this_time = table.remove(list_of_instruments_we_need_to_apply)
     local previous_instrument = to_apply_this_time.track_config.selected_instrument
     to_apply_this_time.track_config.selected_instrument =
         known_instruments[to_apply_this_time.new_selection.name]
         .new_instance(to_apply_this_time.new_selection.params)
     if not previous_instrument.is_finished() then
-        table.insert(to_apply_this_time.song_player.deprecated_instruments, previous_instrument)
+        table.insert(song_player.deprecated_instruments, previous_instrument)
     end
 end
 
@@ -298,14 +309,31 @@ end
 ---@param track_config SongPlayerTrackConfig
 ---@param new_selection InstrumentSelection
 local function eventualy_apply_configed_instrument(song_player, track_config, new_selection)
-    table.insert(configed_instruments_to_apply, {
-        song_player = song_player,
+    local config_bundle = {
         track_config = track_config,
         new_selection = new_selection
-    })
-    if not instrument_applyer_loop_is_running then
-        instrument_applyer_loop_is_running = true
-        events.TICK:register(configured_instrument_applyer_loop)
+    }
+
+    if configed_instruments_to_apply[song_player] then -- loop is already running
+        table.insert(configed_instruments_to_apply[song_player], config_bundle)
+    else
+        configed_instruments_to_apply[song_player] = {}
+        table.insert(configed_instruments_to_apply[song_player], config_bundle)
+
+        local background_process_event = song_player.primary_event
+
+        local function apply_config_instrument_loop_for_this_player()
+            local is_done = apply_config_instrument_update_loop(song_player)
+
+            if is_done then
+                background_process_event:remove(apply_config_instrument_loop_for_this_player)
+                song_player.controller.remove_update_callback(apply_config_instrument_loop_for_this_player)
+            end
+        end
+
+        apply_config_instrument_loop_for_this_player()  -- manualy call first time. Prevents the start_time=0 notes from useing the wrong instrument.
+        background_process_event:register(apply_config_instrument_loop_for_this_player) -- make sure we can continue processing even in background
+        song_player.controller.register_update_callback(apply_config_instrument_loop_for_this_player)   -- make sure we'll eventualy process it. (if song plays, we can step.)
     end
 end
 
@@ -412,7 +440,7 @@ local function update_song(song_player)
         end
     end
 
-    if song_player.info_display_root_part:getVisible() then
+    if song_player.info_should_be_visible then
         update_info_display_text(song_player)
     end
 
@@ -622,7 +650,7 @@ local song_player_api = {
 
 
             begin_emergency_stop = function()
-                print_debug("The primary and fallback events for song "..song_player.name.." are not responding. Starting emergency stop.")
+                print_debug("The primary and fallback events for song `"..song_player.name.."` are not responding. Starting emergency stop.", true, true)
                 song_player.fallback_event:remove(update_this_song)
                 song_player.primary_event:remove(update_this_song)
                 song_player.start_time = nil
@@ -708,6 +736,7 @@ local song_player_api = {
                     watcher_state_key = "idle"
                     -- TODO: Is there any extra clean up that needs to be done?
                     events.WORLD_TICK:remove(event_watcher_and_swapper)
+                    print_debug("Emergency stop for `"..song_player.name.."` complete.", true, true)
                 end
             end,
         }
@@ -776,7 +805,7 @@ local song_player_api = {
 
             info_display_root_pos_offset = vec(0,0,0),      ---@type Vector3        -- in block space. Divide by 16 to get model space.
             info_display_text_pos_offset = vec(0,0,0),      ---@type Vector3        -- in block space. Divide by 16 to get model space.
-            info_display_mute_instructions_text_pos_offset = vectors.vec3(0, 1.75, 0),  -- Just enough vertical offset for the mute info text to appear above them main text.
+            info_display_mute_instructions_text_pos_offset = vectors.vec3(0, 1.7, 0),  -- Just enough vertical offset for the mute info text to appear above them main text.
             info_display_root_part_parent_type = "World",   ---@type ModelPart.parentType
             info_display_base_string = avatar:getEntityName().." is playing \""..song.name.."\"\n",    ---@type string   -- A base name to reduce the amount of things we need to update when rendering the info text
 
@@ -824,15 +853,16 @@ local song_player_api = {
                     song_player.info_display_text_task
                         :setPos(song_player.info_display_text_pos_offset * 16)
                         :setText(song_player.info_display_base_string)
-                        :setScale(0.33)
+                        :setScale(0.25)
                         :setOpacity(0.8)
                         :setWidth(200)
                         :setSeeThrough(true)
+                        :setShadow(true)
 
                     song_player.info_display_mute_instructions_text_task = song_player.info_display_billboard_part:newText("song_info_mute_instructions_text_task_"..tostring(song_player.song_uuid))
                     song_player.info_display_mute_instructions_text_task
                         :setPos(song_player.info_display_text_task:getPos() + song_player.info_display_mute_instructions_text_pos_offset)
-                        :setScale(0.2)
+                        :setScale(0.15)
                         :setOpacity(0.5)
                         :setSeeThrough(true)
                         :setText("Annoyed? Permissions, "..avatar:getEntityName()..", ∧, Avatar Sounds Volume") -- ", :mute:"
