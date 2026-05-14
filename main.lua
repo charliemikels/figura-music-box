@@ -288,6 +288,7 @@ local function fake_init()
             if nearest_open_music_box then
                 move_music_source(nearest_open_music_box.pos + block_center_offset)
                 song_controller.play()
+                song_controller.register_stop_callback(song_loop_function)
             end
 
             animations.MusicBox["animation.model.Playing"]:stop()   -- calling stop helps un-stick :pause()
