@@ -131,12 +131,10 @@ local function close_box(music_box)
             song_controller.remove_stop_callback(song_loop_function)
             song_controller.stop()
         end
-    elseif music_box.id == nearest_open_music_box.id then
-        local closest_box = nil
-        local closest_box_distance = math.huge
-        for _, compare_box in pairs(open_music_boxes) do
-
-        end
+    elseif music_box.id == nearest_open_music_box.id then   -- we need to find the next nearest box.
+        local _, any_opened_box = next(open_music_boxes)    -- the world tick loop will eventualy find the real nearest box
+        nearest_open_music_box = any_opened_box
+        move_music_source(any_opened_box.pos + block_center_offset)
     end
 
     sounds["block.lever.click"]
