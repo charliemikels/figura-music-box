@@ -242,6 +242,16 @@ local function fake_init()
     animations.MusicBox["animation.model.Playing"]:pause()  -- The animation is what actualy opens the lid. Setting it to pause holds the first frame.
 
 
+    local processing_reminder_text_root = models.MusicBox.SKULL.MusicBox.Playing:newPart("processing_reminder_text_root")
+    processing_reminder_text_root:setPos(0, 14, 0)
+    local processing_reminder_text_camera = processing_reminder_text_root:newPart("processing_reminder_text_camera", "CAMERA")
+    local processing_reminder_text = processing_reminder_text_camera:newText("processing_reminder_text")
+    processing_reminder_text:setAlignment("CENTER")
+        :setText("One moment\nWe're still getting ready")
+        :scale(0.2)
+        :opacity(0.8)
+        :shadow(true)
+
 
     -- Set up music player stuff
 
@@ -249,12 +259,15 @@ local function fake_init()
     library:add_local_songs()
     local song_holder = library:get_song_by_id("music_player.local_songs.starbound-atlas-loop")
     if not song_holder then
+        processing_reminder_text:setText("Failed to get the song from the music player library")
         print("Failed to get the song from the music player library")
     else
         local data_processor = song_holder:start_or_get_data_processor()
 
         data_processor:register_callback(function (finished_future)
+
             if finished_future:has_error() then
+                processing_reminder_text:setText("failed to process song")
                 print("failed to process song")
                 return
             end
@@ -294,6 +307,7 @@ local function fake_init()
 
             animations.MusicBox["animation.model.Playing"]:stop()   -- calling stop helps un-stick :pause()
             animations.MusicBox["animation.model.Playing"]:play()
+            processing_reminder_text_root:remove()
 
             -- printTable(song_controller)
         end)
