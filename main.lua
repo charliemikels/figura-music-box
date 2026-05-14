@@ -264,6 +264,8 @@ local function fake_init()
 
             song_config.source_entity = nil
 
+            song_config.hide_in_world_info = true
+
             song_config.primary_update_event_key  = "SKULL_RENDER"
             song_config.fallback_update_event_key = "WORLD_RENDER"  -- Good thing we are already requireing max perms
 
