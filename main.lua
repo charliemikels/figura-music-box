@@ -146,7 +146,6 @@ local function listen_for_player_interactions()
 
     for _, test_player in pairs(world.getPlayers()) do
         if (test_player:getSwingTime() == 1) then -- this player punched this tick
-            print("SWING")
             local punchedBlock, _, _ = test_player:getTargetedBlock(true, block_reach)
             local punched_block_pos = punchedBlock:getPos()
             local punched_music_box = music_boxes[tostring(punched_block_pos)]
