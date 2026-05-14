@@ -7,10 +7,8 @@ local samples = {
 local _, example_sample_name = next(samples)
 local sound_id_prefix = nil ---@type string?
 for _, full_sound_id in pairs(sounds:getCustomSounds()) do
-    print(full_sound_id, example_sample_name)
     if string.find(full_sound_id, example_sample_name) then
         sound_id_prefix = full_sound_id:gsub(example_sample_name, "");
-        print("PREFIX", sound_id_prefix)
         break
     end
 end
