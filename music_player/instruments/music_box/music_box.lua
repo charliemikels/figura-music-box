@@ -51,7 +51,7 @@ music_box_instrument_builder = {
                     local new_sound = sounds[sound_id_prefix .. samples[27]]
                         :setPitch(midi_note_to_multiplier(instruction.note, 27+(12*2)))  -- For this speciffic avatar, drop the octive by 2 (by saying the sample target is two octives up.)
                         :setPos(position)
-                        :setSubtitle("Music from "..player:getName())
+                        :setSubtitle("Music from "..(player:isLoaded() and player:getName() or avatar:getName()))
                         :setVolume( (instruction.start_velocity/127) * 0.8)  -- TODO: :setVolume(… * instruction.modifiers.(now).volume)
                     new_sound:play()
                 else
