@@ -248,7 +248,7 @@ local function fake_init()
 
     local library = require("music_player.libraries"):build_library()
     library:add_local_songs()
-    local song_holder = library:get_song_by_id("music_player.local_songs.starbound-atlas")
+    local song_holder = library:get_song_by_id("music_player.local_songs.starbound-atlas-loop")
     if not song_holder then
         print("Failed to get the song from the music player library")
     else
