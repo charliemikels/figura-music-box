@@ -38,7 +38,7 @@ local function get_or_add_and_get_music_box(block)
         return music_boxes[tostring(block:getPos())]
     end
 
-    print("new music box "..tostring(block:getPos()))
+    -- print("new music box "..tostring(block:getPos()))
 
     ---@class MusicBox
     local new_music_box = {
@@ -163,7 +163,7 @@ end
 ---@param id MusicBoxID
 ---@param music_box MusicBox
 local function remove_music_box(id, music_box)
-    print("removeing music box "..id)
+    -- print("removeing music box "..id)
     if open_music_boxes[music_box.id] then close_box(music_box) end
     music_boxes[id] = nil
 end
@@ -232,7 +232,7 @@ local function fake_init()
     upgrade_request_billboard:remove()
     upgrade_request_text:remove()
 
-    print("--<< box reloaded | " .. world.getTime() .. " >>--")
+    -- print("--<< box reloaded | " .. world.getTime() .. " >>--")
 
 
     events.SKULL_RENDER:register(music_box_render)
@@ -295,7 +295,7 @@ local function fake_init()
             animations.MusicBox["animation.model.Playing"]:stop()   -- calling stop helps un-stick :pause()
             animations.MusicBox["animation.model.Playing"]:play()
 
-            printTable(song_controller)
+            -- printTable(song_controller)
         end)
     end
 
