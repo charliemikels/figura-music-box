@@ -315,3 +315,9 @@ local function fake_init()
 
 end
 events.SKULL_RENDER:register(fake_init)
+
+
+local portrait_model = models.MusicBox.SKULL.MusicBox.Playing:copy("playing_copy_for_portrait_model")
+local portrait_bone = models:newPart("Portrait_bone", "PORTRAIT")
+portrait_model:moveTo(portrait_bone)
+portrait_model:setScale(0.7, 0.7, 0.7):setRot(-30, 25, -35):setPos(-1.5, 1.5, -5)
