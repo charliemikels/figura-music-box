@@ -3,7 +3,9 @@
 
 This project is a Figura avatar. You'll need to download the [Figura](https://modrinth.com/mod/figura) mod for Minecraft to use it. 
 
+[Figura_Music_Box_demo.webm](https://github.com/user-attachments/assets/3b0f8b2a-cad0-41a2-be83-9e5f5ddbd363)
 
+(↑ remember to unmute the video ↑)
 
 This avatar was primaraly built to test some non-standard usecases for my [Figura Music Player](https://github.com/charliemikels/figura-music-player) system. 
 
