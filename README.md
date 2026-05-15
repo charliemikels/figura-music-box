@@ -7,7 +7,7 @@ This project is a Figura avatar. You'll need to download the [Figura](https://mo
 
 (↑ remember to unmute the video ↑)
 
-This avatar was primaraly built to test some non-standard usecases for my [Figura Music Player](https://github.com/charliemikels/figura-music-player) system. 
+This avatar was primaraly built to test some non-standard usecases for my [Figura Music Player](https://github.com/charliemikels/figura-music-player) system. It's also a sort of replica of [Starbound](https://store.steampowered.com/app/211820/Starbound/)'s [Decorated Music Box](https://starbounder.org/Decorated_Music_Box) item.
 
 This is a player head avatar. To use it, you'll need to get and place your player head in the world. Typically you'll need to use commands, datapacks, or mods to do this. Once you have your player head, place it in the world. Punching the avatar should open the lid and play music. Punch again to close the lid. If this doesn't work, make sure you've set yourself to MAX permissions. This should be the default, but it's probably good to check.
 
