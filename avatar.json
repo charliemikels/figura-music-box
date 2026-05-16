@@ -1,7 +1,7 @@
 {
-    "authors":[
-      "Tanner Limes"
-    ],
+    "authors":["Tanner Limes"],
     "name": "Music Box",
+    "description": "A decorated music box",
+    "version": "1.0.0",
     "color": "#78ff92"
 }
