@@ -264,7 +264,7 @@ local function fake_init()
     else
         local data_processor = song_holder:start_or_get_data_processor()
 
-        data_processor:register_callback(function (finished_future)
+        data_processor:register_on_done_callback(function (finished_future)
 
             if finished_future:has_error() then
                 processing_reminder_text:setText("failed to process song")

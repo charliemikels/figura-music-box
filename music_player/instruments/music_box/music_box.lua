@@ -62,13 +62,13 @@ music_box_instrument_builder = {
                 -- Notes do not linger, nothing to update
                 fallback_instrument_instance.update_sounds(position)
             end,
-            stop_one_sound_immediatly = function()
+            stop_one_sound_immediately = function()
                 -- Notes do not linger and so there's nothing to clean
-                fallback_instrument_instance.stop_one_sound_immediatly()
+                fallback_instrument_instance.stop_one_sound_immediately()
             end,
-            stop_all_sounds_immediatly = function()
+            stop_all_sounds_immediately = function()
                 -- Notes do not linger and so there's nothing to clean
-                fallback_instrument_instance.stop_all_sounds_immediatly()
+                fallback_instrument_instance.stop_all_sounds_immediately()
             end,
             is_finished = function()
                 -- Notes do not linger and so there's nothing to clean

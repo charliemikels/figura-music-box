@@ -52,7 +52,7 @@ local instrument_builder
 ---@type InstrumentBuilder
 instrument_builder = {
     name = "Triangle Sine",         -- Also used when making unique identifiers
-    is_available = function() return triangle_sine_sound_key and avatar:canUseCustomSounds() end,       -- Used by dynamicly-loaded instruments to signal when they are ready to go.
+    is_available = function() return triangle_sine_sound_key and avatar:canUseCustomSounds() end,
     features = {            -- Displayed to users so that they know what features this instrument supports.
         -- percussion = false,
         sustain = true,     -- Notes can "ring" for any amount of time. (Unlike music block notes)
@@ -66,7 +66,7 @@ instrument_builder = {
         local fallback_instrument_builder = song_player_api.get_instrument_builder("MC/Harp")
         local fallback_instrument_instance   = fallback_instrument_builder and fallback_instrument_builder.new_instance({}) or nil
 
-        ---@type {time_started: number, instruction: Instruction, modifier_index: integer, detune_amount: number, sound: Sound}[]
+        ---@type {time_started: number, stop_time: number, instruction: Instruction, modifier_index: integer, detune_amount: number, sound: Sound}[]
         local active_instructions = {}
         local instrument_config = {
             pitch_bend_sensitivity = 2,
@@ -76,7 +76,7 @@ instrument_builder = {
         ---@type Instrument
         local new_instance = {
             play_instruction = function(instruction, position, time_since_due)
-                -- print("start: " .. tostring(instruction.note) .. " on trk" .. tostring(instruction.track_index) .. " for " .. tostring(instruction.duration) )
+                -- print("start: " .. tostring(instruction.note) .. " on track" .. tostring(instruction.track_index) .. " for " .. tostring(instruction.duration) )
 
                 if not instrument_builder.is_available() then
                     if fallback_instrument_instance then
@@ -87,15 +87,18 @@ instrument_builder = {
 
                 local detune_amount = (instrument_config.do_detune and ((math.random()-0.5) * 0.1) or 0)
 
-                local new_sound = sounds[triangle_sine_sound_key]    -- TODO: Make reletive using sounds:getCustomSounds whatver and then substring search
+                local new_sound = sounds[triangle_sine_sound_key]
                     :setPos(position)
                     :setVolume((instruction.start_velocity/127))
                     :setLoop(true)
                     :setPitch(midi_note_to_multiplier(instruction.note, detune_amount))
                     :setSubtitle("Music from "..(player:isLoaded() and player:getName() or avatar:getName()))
 
+                local start_time = client.getSystemTime() - time_since_due
+
                 local active_instruction = {
-                    time_started = client.getSystemTime() - time_since_due,
+                    time_started = start_time,
+                    stop_time = start_time + instruction.duration,
                     instruction = instruction,
                     detune_amount = detune_amount,
                     modifier_index = 1,
@@ -107,8 +110,12 @@ instrument_builder = {
                 table.insert(active_instructions, active_instruction)
             end,
             update_sounds = function(position)
+                -- I'd like to do something clever that would save us from touching every active note,
+                -- like indexing/sorting by stop time so that we can ignore notes that aren't due yet.
+                -- But we actually do need to touch every note anyways to update it's position.
+
                 for active_instruction_key, active_instruction in pairs(active_instructions) do
-                    if (active_instruction.time_started + active_instruction.instruction.duration) <= client.getSystemTime() then
+                    if (active_instruction.stop_time) <= client.getSystemTime() then
                         -- Stop this instruction
                         active_instruction.sound:stop()
                         active_instruction.sound = nil
@@ -119,7 +126,7 @@ instrument_builder = {
                     end
                 end
             end,
-            stop_one_sound_immediatly = function()
+            stop_one_sound_immediately = function()
                 local active_instruction_key, active_instruction = next(active_instructions)
                 if active_instruction_key then
                     active_instruction.sound:stop()
@@ -127,7 +134,7 @@ instrument_builder = {
                     active_instructions[active_instruction_key] = nil
                 end
             end,
-            stop_all_sounds_immediatly = function()
+            stop_all_sounds_immediately = function()
                 for active_instruction_key, active_instruction in pairs(active_instructions) do
                     active_instruction.sound:stop()
                     active_instruction.sound = nil
